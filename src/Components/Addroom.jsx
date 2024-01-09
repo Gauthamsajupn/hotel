@@ -102,8 +102,7 @@ function Addroom() {
         </div>
         <div>
           <label htmlFor='description'>Description:</label>
-          <input
-            type='text'
+          <textarea
             className='form-control'
             placeholder='Description'
             value={description}
@@ -177,7 +176,7 @@ function Addroom() {
         <div>
           <label htmlFor='count'>Available:</label>
           <input
-            type='text'
+            type='number'
             className='form-control'
             placeholder='Count'
             value={count}

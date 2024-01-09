@@ -31,7 +31,7 @@ const Bookingscreen = (match) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await axios.post('/api/rooms/getroombyid', { roomid });
+        const response = await axios.post('http://localhost:3005/api/rooms/getroombyid', { roomid });
         setTotalamount(response.data.rentperday * totldys)
         setRoom(response.data);
         setLoading(false);
@@ -55,7 +55,7 @@ const Bookingscreen = (match) => {
     }
 
     try {
-      const result = await axios.post('/api/bookings/bookroom', bookingDetails)
+      const result = await axios.post('http://localhost:3005/api/bookings/bookroom', bookingDetails)
 
     } catch (error) {
 
@@ -63,29 +63,43 @@ const Bookingscreen = (match) => {
   }
 
   async function onToken(token) {
-    console.log(token)
+    console.log(token);
+
     const bookingDetails = {
-      room,
-      userid: JSON.parse(localStorage.getItem('currentuser'))._id,
-      fromdate, todate,
-      totalamount,
-      totaldays: totldys,token
-    }
+        room,
+        userid: JSON.parse(localStorage.getItem('currentuser'))._id,
+        fromdate,
+        todate,
+        totalamount,
+        totaldays: totldys,
+        token,
+    };
 
     try {
-      setLoading(true)
-      const result = await axios.post('/api/bookings/bookroom', bookingDetails)
-      setLoading(false)
-      Swal.fire("Congragulations","Your Room has Been Booked Successfully","success").then(result=>
-        [
-          window.location.href='/profile'
-        ])
+        setLoading(true);
 
+        // Call the endpoint to add booking details
+        await axios.post('http://localhost:3005/api/bookingdetails/addbookingdetails', {
+            roomName: room.name,
+            fromDate: fromdate,
+            toDate: todate,
+            Count: 0,
+        });
+
+        // Call the endpoint to book the room
+        const result = await axios.post('http://localhost:3005/api/bookings/bookroom', bookingDetails);
+
+        setLoading(false);
+
+        Swal.fire("Congratulations", "Your Room has Been Booked Successfully", "success").then(result =>
+            [
+                window.location.href = '/profile'
+            ]);
     } catch (error) {
-      setLoading(false)
-      Swal.fire('Oops',"something went wrong","error")
+        setLoading(false);
+        Swal.fire('Oops', "Something went wrong", "error");
     }
-  }
+}
 
   return (
     <div className='m-5'>

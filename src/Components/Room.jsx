@@ -1,16 +1,111 @@
-import React, { useState } from 'react';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import { Button, Carousel, Modal } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
-function Room({ room, fromdate, todate ,numberOfPeople}) {
+function Room({ room, fromdate, todate, numberOfPeople }) {
   const [show, setShow] = useState(false);
+  const [totalRoomCount, setTotalRoomCount] = useState(null);
+  const [bookingCount, setBookingCount] = useState(null);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
-  // Check if the room count is greater than 0
-  if (room.count <= 0 || room.display <=0) {
-    return null; // Do not render the component if count is 0 or negative
+  const redirectToBookingPage = () => {
+    window.location.href = `/book/${room._id}/${fromdate}/${todate}/${numberOfPeople}`;
+  };
+
+  const fetchBookingCount = async () => {
+    try {
+      setLoadingAvailability(true);
+  
+      // Validate and convert the dates
+      const fromDateObj = new Date(fromdate);
+      const toDateObj = new Date(todate);
+  
+      if (isNaN(fromDateObj) || isNaN(toDateObj)) {
+        // Handle invalid date format
+        console.error('Invalid date format');
+        return;
+      }
+  
+      // Send a POST request to get the count of overlapping bookings
+      const bookingResponse = await axios.post('http://localhost:3005/api/bookingdetails/getbookingcount', {
+        roomName: room.name,
+        fromDate: fromDateObj.toISOString(), // Convert to ISO format for consistent date representation
+        toDate: toDateObj.toISOString(),
+      });
+  
+      console.log('Booking Count Data:', bookingResponse.data.count);
+  
+      // Set the booking count in the component state
+      setBookingCount(bookingResponse.data.count);
+  
+      // Get the total room count from the server
+      const totalRoomCountResponse = await axios.get(`http://localhost:3005/api/rooms/getroomcount/${room._id}`);
+      console.log('Total Room Count Data:', totalRoomCountResponse.data.count);
+      setTotalRoomCount(totalRoomCountResponse.data.count);
+  
+      if (bookingResponse.data.count >= totalRoomCountResponse.data.count) {
+        // If the room is fully booked, show an error message
+        Swal.fire({
+          title: 'Room Not Available',
+          text: 'The room is fully booked for the selected dates.',
+          icon: 'error',
+        }).then(() => {
+          // Reload the page
+          window.location.reload();
+        });
+      } else {
+        // Do not automatically redirect here; handle it in the button click handler
+      }
+    } catch (error) {
+      console.error(error);
+      // Handle error
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+  
+  const handleBookNowClick = async () => {
+    try {
+      setLoadingAvailability(true);
+      // Run the fetchBookingCount function when the "Book Now" button is clicked
+      await fetchBookingCount();
+  
+      // If the room is available, redirect to the booking page
+      if (!loadingAvailability && bookingCount !== null && totalRoomCount !== null) {
+        if (bookingCount < totalRoomCount) {
+          redirectToBookingPage();
+        } else {
+          // Show an error message if the room is fully booked
+          Swal.fire({
+            title: 'Room Not Available',
+            text: 'The room is fully booked for the selected dates.',
+            icon: 'error'
+          }).then((result) => {
+            // Check if the user clicked on the "OK" button
+            
+              // Reload the page
+              window.location.reload();
+            
+          });
+          
+          
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      // Handle error
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+   // Empty dependency array means it runs only on mount
+  
+  if ( room.display <= 0) {
+    return null;
   }
 
   return (
@@ -27,9 +122,12 @@ function Room({ room, fromdate, todate ,numberOfPeople}) {
         </b>
         <div style={{ float: 'right' }}>
           {(fromdate && todate) && (
-            <Link to={`/book/${room._id}/${fromdate}/${todate}/${numberOfPeople}`}>
-              <Button className='btn btn-primary m-2'>Book Now</Button>
-            </Link>
+            <Button
+              className='btn btn-primary m-2'
+              onClick={handleBookNowClick}
+            >
+              Book Now
+            </Button>
           )}
           <Button className='btn btn-primary' onClick={handleShow}>View Details</Button>
         </div>
